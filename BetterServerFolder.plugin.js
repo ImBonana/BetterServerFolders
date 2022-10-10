@@ -117,36 +117,245 @@ module.exports = (() => {
                 PluginUtilities
             } = Api;
 
-            async function setTextInTextBox(text) {
-                const ComponentDispatch = BdApi.Webpack.getModule(m => m.dispatchToLastSubscribed && m.emitter.listeners("INSERT_TEXT").length) 
+            let elementsToRemove = []
 
-                await ComponentDispatch.dispatchToLastSubscribed("INSERT_TEXT", {
-                    plainText: `${text}`
-                });
+            let customFolders = []
+
+            let observers = []
+
+            /**
+             * @param {string} query 
+             * @param {string} element
+             * @param {{position: "afterbegin" | "afterend" | "beforebegin" | "beforeend", removeOnStop: Boolean}} option
+             */
+            function addElements(query, element, option = { position: "beforeend", removeOnStop: true }) {
+                const parentElement = document.querySelector(query)
+                if(parentElement) {
+                    const node = parentElement.insertAdjacentElement(option.position, new DOMParser().parseFromString(element, "text/html").body.firstChild)
+                    if(option.removeOnStop) elementsToRemove.push(node)
+                    return node;
+                }
+            }
+
+            function removeElements() {
+                elementsToRemove.forEach(item => {
+                    if(item) item.remove();
+                })
+                elementsToRemove = [];
+            }
+
+            function removeCustomFolderElements() {
+                customFolders.forEach(item => {
+                    if(item.element) item.element.remove();
+                })
+
+                customFolders = [];
+
+                observers.forEach(item => {
+                    if(item) item.disconnect()
+                })
+
+                observers = [];
+            }
+
+            function getFirstLetters(str) {
+                const firstLetters = str
+                  .split(' ')
+                  .map(word => word[0])
+                  .join('');
+              
+                return firstLetters;
+            }
+
+            function updateFolders() {
+                console.log("folder updated")
+                removeCustomFolderElements()
+                let folders = DiscordModules.SortedGuildStore.guildFolders.filter(item => item.folderId != undefined)
+
+                if(folders.length <= 0) return;
+                folders.forEach(folder => {
+                    let folderData = document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`)
+                    
+                    let folderElement = addElements("#folderOverlay", `<div data-show="${folderData.ariaExpanded}" class="${config.info.name}-folder" id="folderId-${folder.folderId}"></div>`, { position: "beforeend", removeOnStop: false })
+                    addElements(`#${folderElement.id}`, `<div id="folderId-${folder.folderId}-guilds" class="${config.info.name}-folder-guilds"></div>`, { position: "beforeend", removeOnStop: false })
+                    folder.guildIds.forEach(guildId => {
+                        let guild = BdApi.Webpack.getModule(BdApi.Webpack.Filters.byProps("getGuild", "getGuilds")).getGuild(guildId)
+                        let icon = guild.icon ? `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64"/>` : `<div>${getFirstLetters(guild.name)}</div>`
+                        let guildElement = addElements(`#folderId-${folder.folderId}-guilds`, `<div id="folderId-${folder.folderId}-${guildId}" class="${config.info.name}-folder-guild">${icon}</div>`, { position: "beforeend", removeOnStop: false })
+                        guildElement.addEventListener("click", () => {
+                            DiscordModules.GuildActions.transitionToGuildSync(guild.id)
+                        })
+                    })
+                    customFolders.push({ folderId: folder.folderId, element: folderElement })
+
+                    folderElement.setAttribute("style", `top: ${document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`).getClientRects()[0].y - 10}px;`)
+
+                    document.querySelectorAll('.folder-241Joy[aria-owns^="folder-items-"]').forEach(normalFolder => {
+                        const mutationObserver = new MutationObserver(() => {
+                            let folder = document.getElementById(`folderId-${normalFolder.getAttribute("data-list-item-id").replace("guildsnav___", "")}`)
+                                if(folder) folder.dataset.show = `${normalFolder.ariaExpanded}`
+                        })
+                        mutationObserver.observe(normalFolder, {attributes: true})
+                        observers.push(mutationObserver)
+                    })
+                    
+                    // scroll listener
+                    // ... update folder ui position
+                    document.querySelector(".guilds-2JjMmN .tree-3agP2X .scroller-3X7KbA").addEventListener("scroll", () => {
+                        console.log("scroll")
+                        folderElement.setAttribute("style", `top: ${document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`).getClientRects()[0].y - 10}px;`)
+                    })
+                })                
+            }
+
+            function rootCss(color) {
+                let rootCss = `
+                    :root,
+                    ::before,
+                    ::after {
+                        --${config.info.name}-folder-background-color: ${color};
+                    }
+                `
+
+                return rootCss;
             }
 
             return class NitroPerks extends Plugin {
                 defaultSettings = {
                     backgroundColor: "#2c2c2c",
-                    folderColor: false
                 };
                 settings = PluginUtilities.loadSettings(this.getName(), this.defaultSettings);
+
+                rootCss = `
+                    :root,
+                    ::before,
+                    ::after {
+                        --${config.info.name}-folder-background-color: {{ color }};
+                    }
+                `
+
+                css = `
+                    ul[id^="folder-items-"] {
+                        display: none;
+                    }
+
+                    .${config.info.name}-folder {
+                        --min-width: 110px;
+                        --min-height: 60px;
+                        background-color: var(--${config.info.name}-folder-background-color);
+                        min-width: var(--min-width);
+                        min-height: var(--min-height);
+                        width: fit-content;
+                        height: var(--min-height);
+                        pointer-events: all;
+                        position: fixed;
+                        left: calc(72px + 20px);
+                        border-radius: 15px;
+                        padding: 5px;
+                    }
+
+                    .${config.info.name}-folder[data-show="false"] {
+                        display: none;
+                    }
+
+                    .${config.info.name}-folder[data-show="true"] {
+                        animation-name: ${config.info.name}-open-folder;
+                        animation-duration: 1s;
+                        animation-iteration-count: 1;
+                    }
+
+                    @keyframes ${config.info.name}-open-folder {
+                        from {transform: translateX(calc(-100% - 100px));}
+                        to {transform: translateX(0);}
+                      }
+                      
+
+                    .${config.info.name}-folder[data-show="true"]::before {
+                        content: '';
+                        width: 0;
+                        height: 0;
+                        border-top: 15px solid transparent;
+                        border-right: 20px solid var(--${config.info.name}-folder-background-color);
+                        border-bottom: 15px solid transparent;
+                        left: -20px;
+                        top: calc(50% - 15px);
+   	                    position: absolute;
+                    }
+                    
+                    .${config.info.name}-folder-guilds {
+                        margin: 0;
+                        transform: translateY(10%);
+                        overflow: hidden;
+                    }
+
+                    .${config.info.name}-folder-guild {
+                        display: inline-block;
+                        margin: 0 5px;
+                        min-width: 50px;
+                        min-height: 50px;
+                        border-radius: 50px;
+                        cursor: pointer;
+                    }
+
+                    .${config.info.name}-folder-guild img,
+                    .${config.info.name}-folder-guild div {
+                        transition: 0.2s ease;
+                        width: 50px;
+                        height: 50px;
+                        border-radius: 50px;
+                    }
+
+                    .${config.info.name}-folder-guild:hover,
+                    .${config.info.name}-folder-guild:hover img,
+                    .${config.info.name}-folder-guild:hover div {
+                        border-radius: 15px;
+                        background-color: rgb(0 0 0 / 40%);
+                    }
+
+                    .${config.info.name}-folder-guild img {
+                        
+                    }
+
+                    .${config.info.name}-folder-guild div {
+                        text-align: center;
+                        background-color: rgb(0 0 0 / 35%);
+                        font-size: 100%;
+                        line-height: 50px;
+                    }
+                `
+
                 getSettingsPanel() {
                     return Settings.SettingPanel.build(_ => this.saveAndUpdate(), ...[
-                        new Settings.Switch("folderBackgroundColor", "Set the color of the background to the folder color", this.settings.folderColor, check => this.settings.folderColor = check),
-                        new Settings.ColorPicker("backgroundColor", "Set the color of the background when the folder is open", this.settings.backgroundColor, color => this.settings.backgroundColor = color, )
+                        new Settings.ColorPicker("backgroundColor", "Set the color of the background when the folder is open", this.settings.backgroundColor, color => this.settings.backgroundColor = color)
                     ])
                 }
-                
+
                 saveAndUpdate() {
                     PluginUtilities.saveSettings(this.getName(), this.settings)
+                    PluginUtilities.removeStyle(`${this.getName()}-root`)
+                    PluginUtilities.addStyle(`${this.getName()}-root`, rootCss(this.settings.backgroundColor));
+                }
+
+                setUp() {
+                    PluginUtilities.addStyle(`${this.getName()}-css`, this.css);
+                    PluginUtilities.addStyle(`${this.getName()}-root`, rootCss(this.settings.backgroundColor));
+                    addElements(".notDevTools-1zkgfK > .layerContainer-2v_Sit", `<div id="folderOverlay"></div>`)
+
+                    updateFolders()
+                    DiscordModules.SortedGuildStore.addChangeListener(updateFolders)
                 }
 
                 onStart() {
-                    this.saveAndUpdate()
+                    this.setUp()
                 }
 
                 onStop() {
+                    document.querySelector(".guilds-2JjMmN .tree-3agP2X .scroller-3X7KbA").removeEventListener("scroll");
+                    removeElements()
+                    removeCustomFolderElements()
+                    DiscordModules.SortedGuildStore.removeChangeListener(updateFolders)
+                    PluginUtilities.removeStyle(`${this.getName()}-css`);
+                    PluginUtilities.removeStyle(`${this.getName()}-root`);
                     Patcher.unpatchAll();
                 }
             };
