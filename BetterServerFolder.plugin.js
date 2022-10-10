@@ -50,7 +50,7 @@ module.exports = (() => {
                 "items": [
                     "Added close animation!"
                 ]
-            },
+            }
             // {
             //     "title": "Bugs Fixes",
             //     "type": "fixed",
