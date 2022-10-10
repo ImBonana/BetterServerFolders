@@ -45,12 +45,12 @@ module.exports = (() => {
             "github_raw": "https://raw.githubusercontent.com/pronoob742/BetterServerFolders/main/BetterServerFolders.plugin.js"
         },
         "changelog": [
-            // {
-            //     "title": "New Stuff",
-            //     "items": [
-            //         "Added close animation!"
-            //     ]
-            // },
+            {
+                "title": "New Stuff",
+                "items": [
+                    "Added close animation!"
+                ]
+            },
             // {
             //     "title": "Bugs Fixes",
             //     "type": "fixed",
