@@ -2,7 +2,7 @@
  * @name BetterServerFolders
  * @author Im_Banana#6112
  * @description Make The Server Folders Better!
- * @version 1.0.0
+ * @version 1.0.1
  * @authorId 635250116688871425
  * @website https://github.com/pronoob742/BetterServerFolders
  * @source https://github.com/pronoob742/BetterServerFolders
@@ -39,7 +39,7 @@ module.exports = (() => {
                 "discord_id": "635250116688871425",
                 "github_username": "pronoob742"
             }],
-            "version": "1.0.0",
+            "version": "1.0.1",
             "description": "Make The Server Folders Better!",
             "github": "https://github.com/pronoob742/BetterServerFolders",
             "github_raw": "https://raw.githubusercontent.com/pronoob742/BetterServerFolders/main/BetterServerFolders.plugin.js"
@@ -48,28 +48,28 @@ module.exports = (() => {
             // {
             //     "title": "New Stuff",
             //     "items": [
-            //         "Add Sticker bypass. Not Working With Animated Stickers"
+            //         "Added close animation!"
             //     ]
             // },
             // {
             //     "title": "Bugs Fixes",
             //     "type": "fixed",
             //     "items": [
-            //         "Fix The Emoji Menu"
+            //         ""
             //     ]
             // },
             // {
             //     "title": "Improvements",
             //     "type": "improved",
             //     "items": [
-            //         "Improve The Code"
+            //         ""
             //     ]
             // },
             // {
             //     "title": "On-going",
             //     "type": "progress",
             //     "items": [
-            //         "Animated Stickers Will Be In The Next Update!"
+            //         ""
             //     ]
             // }
         ],
@@ -193,16 +193,13 @@ module.exports = (() => {
                     document.querySelectorAll('.folder-241Joy[aria-owns^="folder-items-"]').forEach(normalFolder => {
                         const mutationObserver = new MutationObserver(() => {
                             let folder = document.getElementById(`folderId-${normalFolder.getAttribute("data-list-item-id").replace("guildsnav___", "")}`)
-                                if(folder) folder.dataset.show = `${normalFolder.ariaExpanded}`
+                            if(folder) folder.dataset.show = `${normalFolder.ariaExpanded}`
                         })
                         mutationObserver.observe(normalFolder, {attributes: true})
                         observers.push(mutationObserver)
                     })
                     
-                    // scroll listener
-                    // ... update folder ui position
                     document.querySelector(".guilds-2JjMmN .tree-3agP2X .scroller-3X7KbA").addEventListener("scroll", () => {
-                        console.log("scroll")
                         folderElement.setAttribute("style", `top: ${document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`).getClientRects()[0].y - 10}px;`)
                     })
                 })                
@@ -226,14 +223,6 @@ module.exports = (() => {
                 };
                 settings = PluginUtilities.loadSettings(this.getName(), this.defaultSettings);
 
-                rootCss = `
-                    :root,
-                    ::before,
-                    ::after {
-                        --${config.info.name}-folder-background-color: {{ color }};
-                    }
-                `
-
                 css = `
                     ul[id^="folder-items-"] {
                         display: none;
@@ -255,7 +244,7 @@ module.exports = (() => {
                     }
 
                     .${config.info.name}-folder[data-show="false"] {
-                        display: none;
+                        animation: ${config.info.name}-close-folder 1s forwards;
                     }
 
                     .${config.info.name}-folder[data-show="true"] {
@@ -267,8 +256,13 @@ module.exports = (() => {
                     @keyframes ${config.info.name}-open-folder {
                         from {transform: translateX(calc(-100% - 100px));}
                         to {transform: translateX(0);}
-                      }
-                      
+                    }
+
+                    @keyframes ${config.info.name}-close-folder {
+                        0% {transform: translateX(0);}
+                        99.99% {transform: translateX(calc(-100% - 100px));}
+                        100% { display: none; transform: translateX(calc(-100% - 100px)); }
+                    } 
 
                     .${config.info.name}-folder[data-show="true"]::before {
                         content: '';
