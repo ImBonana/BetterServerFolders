@@ -2,12 +2,13 @@
  * @name BetterServerFolders
  * @author Im_Banana#6112
  * @description Make The Server Folders Better!
- * @version 1.0.1
+ * @version 1.0.2
  * @authorId 635250116688871425
  * @website https://github.com/pronoob742/BetterServerFolders
  * @source https://github.com/pronoob742/BetterServerFolders
  * @updateUrl https://raw.githubusercontent.com/pronoob742/BetterServerFolders/main/BetterServerFolders.plugin.js
  */
+
 /*@cc_on
 @if (@_jscript)
 	
@@ -39,7 +40,7 @@ module.exports = (() => {
                 "discord_id": "635250116688871425",
                 "github_username": "pronoob742"
             }],
-            "version": "1.0.1",
+            "version": "1.0.2",
             "description": "Make The Server Folders Better!",
             "github": "https://github.com/pronoob742/BetterServerFolders",
             "github_raw": "https://raw.githubusercontent.com/pronoob742/BetterServerFolders/main/BetterServerFolders.plugin.js"
@@ -48,16 +49,17 @@ module.exports = (() => {
             {
                 "title": "New Stuff",
                 "items": [
-                    "Added close animation!"
+                    "Added Folder Settings."
                 ]
-            }
-            // {
-            //     "title": "Bugs Fixes",
-            //     "type": "fixed",
-            //     "items": [
-            //         ""
-            //     ]
-            // },
+            },
+            {
+                "title": "Bugs Fixes",
+                "type": "fixed",
+                "items": [
+                    "Fixed the pings not showing in the folder.",
+                    "Fixed when you open the setting the folders not close automatically."
+                ]
+            },
             // {
             //     "title": "Improvements",
             //     "type": "improved",
@@ -65,13 +67,13 @@ module.exports = (() => {
             //         ""
             //     ]
             // },
-            // {
-            //     "title": "On-going",
-            //     "type": "progress",
-            //     "items": [
-            //         ""
-            //     ]
-            // }
+            {
+                "title": "On-going",
+                "type": "progress",
+                "items": [
+                    "More Setting coming soon... 👀"
+                ]
+            }
         ],
         "main": "BetterServerFolders.plugin.js"
     };
@@ -114,7 +116,12 @@ module.exports = (() => {
                 DiscordAPI,
                 Settings,
                 Toasts,
-                PluginUtilities
+                PluginUtilities,
+                Tooltip,
+                PluginUpdater,
+                ReactTools,
+                Modals,
+                WebpackModules
             } = Api;
 
             let elementsToRemove = []
@@ -122,6 +129,8 @@ module.exports = (() => {
             let customFolders = []
 
             let observers = []
+
+            let intervals = []
 
             /**
              * @param {string} query 
@@ -156,75 +165,68 @@ module.exports = (() => {
                 })
 
                 observers = [];
+
+                intervals.forEach(item => {
+                    if(item) clearInterval(item)
+                })
+
+                intervals = []
             }
 
-            function getFirstLetters(str) {
-                const firstLetters = str
-                  .split(' ')
-                  .map(word => word[0])
-                  .join('');
-              
-                return firstLetters;
-            }
-
-            function updateFolders() {
-                console.log("folder updated")
-                removeCustomFolderElements()
-                let folders = DiscordModules.SortedGuildStore.guildFolders.filter(item => item.folderId != undefined)
-
-                if(folders.length <= 0) return;
-                folders.forEach(folder => {
-                    let folderData = document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`)
-                    
-                    let folderElement = addElements("#folderOverlay", `<div data-show="${folderData.ariaExpanded}" class="${config.info.name}-folder" id="folderId-${folder.folderId}"></div>`, { position: "beforeend", removeOnStop: false })
-                    addElements(`#${folderElement.id}`, `<div id="folderId-${folder.folderId}-guilds" class="${config.info.name}-folder-guilds"></div>`, { position: "beforeend", removeOnStop: false })
-                    folder.guildIds.forEach(guildId => {
-                        let guild = BdApi.Webpack.getModule(BdApi.Webpack.Filters.byProps("getGuild", "getGuilds")).getGuild(guildId)
-                        let icon = guild.icon ? `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64"/>` : `<div>${getFirstLetters(guild.name)}</div>`
-                        let guildElement = addElements(`#folderId-${folder.folderId}-guilds`, `<div id="folderId-${folder.folderId}-${guildId}" class="${config.info.name}-folder-guild">${icon}</div>`, { position: "beforeend", removeOnStop: false })
-                        guildElement.addEventListener("click", () => {
-                            DiscordModules.GuildActions.transitionToGuildSync(guild.id)
-                        })
-                    })
-                    customFolders.push({ folderId: folder.folderId, element: folderElement })
-
-                    folderElement.setAttribute("style", `top: ${document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`).getClientRects()[0].y - 10}px;`)
-
-                    document.querySelectorAll('.folder-241Joy[aria-owns^="folder-items-"]').forEach(normalFolder => {
-                        const mutationObserver = new MutationObserver(() => {
-                            let folder = document.getElementById(`folderId-${normalFolder.getAttribute("data-list-item-id").replace("guildsnav___", "")}`)
-                            if(folder) folder.dataset.show = `${normalFolder.ariaExpanded}`
-                        })
-                        mutationObserver.observe(normalFolder, {attributes: true})
-                        observers.push(mutationObserver)
-                    })
-                    
-                    document.querySelector(".guilds-2JjMmN .tree-3agP2X .scroller-3X7KbA").addEventListener("scroll", () => {
-                        folderElement.setAttribute("style", `top: ${document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`).getClientRects()[0].y - 10}px;`)
-                    })
-                })                
-            }
-
-            function rootCss(color) {
+            function rootCss(backgroundColor, pingBackgroundColor) {
                 let rootCss = `
                     :root,
                     ::before,
                     ::after {
-                        --${config.info.name}-folder-background-color: ${color};
+                        --${config.info.name}-folder-background-color: ${backgroundColor};
+                        --${config.info.name}-folder-ping-background-color: ${pingBackgroundColor};
                     }
                 `
 
                 return rootCss;
             }
 
-            return class NitroPerks extends Plugin {
+            function measureWidth(text, font) {
+                const ele = document.createElement('div');
+            
+                ele.style.position = 'absolute';
+                ele.style.visibility = 'hidden';
+                ele.style.whiteSpace = 'nowrap';
+                ele.style.left = '-9999px';
+            
+                ele.style.font = font;
+                ele.innerText = text;
+            
+                document.body.appendChild(ele);
+
+                const width = window.getComputedStyle(ele).width;
+                document.body.removeChild(ele);
+            
+                return width;
+            }
+
+            function setFontScale(id) {
+                const text = document.getElementById(id)
+                if(!text) return;
+                const styles = window.getComputedStyle(text);
+                const font = styles.font;
+                const fontSize = parseInt(styles.fontSize);
+                const measured = measureWidth(text.textContent, font);
+                const scale = text.clientWidth / parseFloat(measured);
+                const scaleFontSize = Math.floor(scale * fontSize);
+                text.style.fontSize = `${Math.min(20, scaleFontSize)}px`;
+            }
+
+            return class BetterServerFolders extends Plugin {
                 defaultSettings = {
                     backgroundColor: "#2c2c2c",
+                    pingBackgroundColor: "#ff0000",
+                    folders: {}
                 };
                 settings = PluginUtilities.loadSettings(this.getName(), this.defaultSettings);
 
                 css = `
-                    ul[id^="folder-items-"] {
+                    ul[id^="folder-items-"]:not([data-editMode="true"]) {
                         display: none;
                     }
 
@@ -243,11 +245,16 @@ module.exports = (() => {
                         padding: 5px;
                     }
 
-                    .${config.info.name}-folder[data-show="false"] {
-                        animation: ${config.info.name}-close-folder 1s forwards;
+                    .${config.info.name}-folder.${config.info.name}-no-anim[data-show="false"] {
+                        display: none;
                     }
 
-                    .${config.info.name}-folder[data-show="true"] {
+                    .${config.info.name}-folder[data-show="false"]:not(.${config.info.name}-no-anim) {
+                        animation: ${config.info.name}-close-folder 1s forwards;
+                    }
+                    
+
+                    .${config.info.name}-folder[data-show="true"]:not(.${config.info.name}-no-anim) {
                         animation-name: ${config.info.name}-open-folder;
                         animation-duration: 1s;
                         animation-iteration-count: 1;
@@ -289,6 +296,7 @@ module.exports = (() => {
                         min-height: 50px;
                         border-radius: 50px;
                         cursor: pointer;
+                        overflow: hidden;
                     }
 
                     .${config.info.name}-folder-guild img,
@@ -303,6 +311,9 @@ module.exports = (() => {
                     .${config.info.name}-folder-guild:hover img,
                     .${config.info.name}-folder-guild:hover div {
                         border-radius: 15px;
+                    }
+
+                    .${config.info.name}-folder-guild:hover div {
                         background-color: rgb(0 0 0 / 40%);
                     }
 
@@ -313,43 +324,206 @@ module.exports = (() => {
                     .${config.info.name}-folder-guild div {
                         text-align: center;
                         background-color: rgb(0 0 0 / 35%);
-                        font-size: 100%;
                         line-height: 50px;
+                    }
+
+                    .${config.info.name}-folder-settings-button {
+                        transition: 0.2s ease;
+                        width: 50px;
+                        height: 50px;
+                        min-width: 50px;
+                        min-height: 50px;
+                        border-radius: 50px;
+                        display: inline-block;
+                        margin: 0 5px;
+                        cursor: pointer;
+                        background-color: rgb(0 0 0 / 35%);
+                        transform: translateY(-2.5px);
+                    }
+
+                    .${config.info.name}-folder-settings-button:hover {
+                        border-radius: 15px;
+                        background-color: rgb(0 0 0 / 40%);
+                    }
+
+                    .${config.info.name}-settings-icon {
+                        transform: scale(75%);
+                    }
+
+                    .${config.info.name}-folder-guild-ping[data-count="0"] {
+                        display: none;
+                    }
+
+                    .${config.info.name}-folder-guild-ping {
+                        position: absolute;
+                        background: var(--${config.info.name}-folder-ping-background-color) !important;
+                        border-radius: 20px !important;
+                        width: 20px !important;
+                        height: 20px !important;
+                        border-style: solid;
+                        border-color: var(--${config.info.name}-folder-background-color);
+                        border-width: 5px;
+                        top: 30px;
+                        left: 30px;
+                        transform-origin: 0px 0px;
+                    }
+
+                    .${config.info.name}-folder-guild-ping span {
+                        position: absolute;
+                        top: -14px;
+                        left: 5px;
                     }
                 `
 
+                updateFolders(plugin, options = { animation: false }) {
+                    removeCustomFolderElements()
+                    let folders = DiscordModules.SortedGuildStore.guildFolders.filter(item => item.folderId != undefined)
+    
+                    if(folders.length <= 0) return;
+                    folders.forEach(folder => {
+                        let mentionModule = WebpackModules.getByProps("getMentionCount")
+                        let folderData = document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`)
+                        
+                        let folderElement = addElements("#folderOverlay", `<div data-show="${folderData.ariaExpanded}" class="${config.info.name}-folder ${options.animation ? "" : config.info.name + "-no-anim"}" id="folderId-${folder.folderId}"></div>`, { position: "beforeend", removeOnStop: false })
+                        addElements(`#${folderElement.id}`, `<div id="folderId-${folder.folderId}-guilds" class="${config.info.name}-folder-guilds" style="background-color: ;"></div>`, { position: "beforeend", removeOnStop: false })
+                        folder.guildIds.forEach(guildId => {
+                            let guild = BdApi.Webpack.getModule(BdApi.Webpack.Filters.byProps("getGuild", "getGuilds")).getGuild(guildId)
+                            
+                            let icon = guild.icon ? `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64"/>` : `<div id="folderId-${folder.folderId}-${guildId}-icon">${guild.acronym}</div>`
+                            let guildElement = addElements(`#folderId-${folder.folderId}-guilds`, `<div id="folderId-${folder.folderId}-${guildId}" class="${config.info.name}-folder-guild">${icon}</div>`, { position: "beforeend", removeOnStop: false })
+                            let mentions = mentionModule.getMentionCount(guild.id)
+                            addElements(`#folderId-${folder.folderId}-${guildId}`, `<div id="folderId-${folder.folderId}-${guildId}-ping" class="${config.info.name}-folder-guild-ping" data-count="${mentions}"><span>${mentions}</span></div>`, { position: "beforeend", removeOnStop: false })
+                            setFontScale(`folderId-${folder.folderId}-${guildId}-icon`)
+                            guildElement.addEventListener("click", () => {
+                                DiscordModules.GuildActions.transitionToGuildSync(guild.id)
+                            })
+                            Tooltip.create(guildElement, guild.name, { side: "bottom" })
+                        })
+    
+                        let settingsIcon = `<svg viewBox="0 0 24 24" class="${config.info.name}-settings-icon"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M19.738 10H22V14H19.739C19.498 14.931 19.1 15.798 18.565 16.564L20 18L18 20L16.565 18.564C15.797 19.099 14.932 19.498 14 19.738V22H10V19.738C9.069 19.498 8.203 19.099 7.436 18.564L6 20L4 18L5.436 16.564C4.901 15.799 4.502 14.932 4.262 14H2V10H4.262C4.502 9.068 4.9 8.202 5.436 7.436L4 6L6 4L7.436 5.436C8.202 4.9 9.068 4.502 10 4.262V2H14V4.261C14.932 4.502 15.797 4.9 16.565 5.435L18 3.999L20 5.999L18.564 7.436C19.099 8.202 19.498 9.069 19.738 10ZM12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z"></path></svg>`
+    
+                        let settingButton = addElements(`#folderId-${folder.folderId}-guilds`, `<div id="folderId-${folder.folderId}-settings" class="${config.info.name}-folder-settings-button">${settingsIcon}</div>`, { position: 'beforeend', removeOnStop: false })
+                        Tooltip.create(settingButton, "Settings", { side: "bottom" })
+                        settingButton.addEventListener("click", () => {
+                            plugin.showFolderSettingsPanel(folder.folderId)
+                        })
+    
+                        customFolders.push({ folderId: folder.folderId, element: folderElement })
+    
+                        folderElement.setAttribute("style", `top: ${document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`).getClientRects()[0].y - 10}px;`)
+                        
+                        let isOpen = folderElement.getAttribute("data-show")
+
+                        if(isOpen && document.querySelector(`ul[id="folder-items-${folder.folderId}"]`)) document.querySelector(`ul[id="folder-items-${folder.folderId}"]`).setAttribute("data-editMode", this.settings.folders[folder.folderId] ? this.settings.folders[folder.folderId].editMode : false)
+                        
+                        let normalFolder = document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`)
+                        const mutationObserver = new MutationObserver(() => {
+                            if(folderElement) {
+                                let oldValue = folderElement.dataset.show
+                                folderElement.dataset.show = `${normalFolder.ariaExpanded}`
+                                if(normalFolder.ariaExpanded == 'true' && oldValue != folderElement.dataset.show) folderElement.classList.remove(`${config.info.name}-no-anim`)
+                                isOpen = normalFolder.ariaExpanded
+                                if(isOpen && document.querySelector(`ul[id="folder-items-${folder.folderId}"]`)) document.querySelector(`ul[id="folder-items-${folder.folderId}"]`).setAttribute("data-editMode", this.settings.folders[folder.folderId] ? this.settings.folders[folder.folderId].editMode : folder)
+                            }
+                        })
+                        mutationObserver.observe(normalFolder, {attributes: true})
+                        observers.push(mutationObserver)
+
+                        intervals.push(setInterval(() => {
+                            let video = document.querySelector(".chat-2ZfjoI .wrapper-1gVUIN")
+                            if(video) folderElement.setAttribute("data-show", video.classList.contains('fullScreen-KhZZcz') ? false : isOpen)
+                        }, 1000))
+    
+                        let overlay = document.querySelector(".layer-86YKbF.baseLayer-W6S8cY")
+                        let video = document.querySelector(".chat-2ZfjoI .wrapper-1gVUIN")
+                        if(overlay && video) folderElement.setAttribute("data-show", (overlay.ariaHidden == 'true' || video.classList.contains('fullScreen-KhZZcz')) ? false : isOpen)
+
+                        const overlayMutationObserver = new MutationObserver(() => {
+                            let overlay = document.querySelector(".layer-86YKbF.baseLayer-W6S8cY")
+                            let video = document.querySelector(".chat-2ZfjoI .wrapper-1gVUIN")
+                            folderElement.setAttribute("data-show", ((overlay && overlay.ariaHidden == 'true') || (video && video.classList.contains('fullScreen-KhZZcz'))) ? false : isOpen)
+                        })
+    
+                        overlayMutationObserver.observe(document.querySelector(".layer-86YKbF.baseLayer-W6S8cY"), { attributes: true })
+                        observers.push(overlayMutationObserver)
+                        
+                        document.querySelector(".guilds-2JjMmN .tree-3agP2X .scroller-3X7KbA").addEventListener("scroll", () => {
+                            folderElement.setAttribute("style", `top: ${document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`).getClientRects()[0].y - 10}px;`)
+                        })
+                    })                
+                }
+
+                updateFolderListener = () => this.updateFolders(this)
+
                 getSettingsPanel() {
                     return Settings.SettingPanel.build(_ => this.saveAndUpdate(), ...[
-                        new Settings.ColorPicker("backgroundColor", "Set the color of the background when the folder is open", this.settings.backgroundColor, color => this.settings.backgroundColor = color)
+                        new Settings.ColorPicker("Default Background Color", "Set the color of the Default background when the folder is open.", this.settings.backgroundColor, color => this.settings.backgroundColor = color),
+                        new Settings.ColorPicker("Ping Background Color", "Set the ping (for the folder servers) background color.", this.settings.pingBackgroundColor, color => this.settings.pingBackgroundColor = color)
                     ])
+                }
+
+                getFolderSettingsPanel(id) {
+                    return Settings.SettingPanel.build(_ => this.saveAndUpdateFolderSettings(id), ...[
+                        new Settings.Textbox("Name", "Set the folder name.", this.settings.folders[id].name, (value) => { if(value.trim() != "") this.settings.folders[id].name = value; }, { placeholder: "Folder Name" }),
+                        new Settings.Switch("Edit Mode", "Set the folder to edit mode to edit the folder guilds and more.", this.settings.folders[id].editMode, (value) => this.settings.folders[id].editMode = value)
+                        // ,
+                        // new Settings.ColorPicker("Folder Color", "Folder background color", this.settings.folders[id].color, (value) => this.settings.folders[id].editMode = value)
+                    ])
+                }
+
+                showFolderSettingsPanel(id) {
+                    let folder = DiscordModules.SortedGuildStore.guildFolders.filter(item => item.folderId == id)[0]
+                    if(!folder) return Toasts.error("Cant find the folder!");
+                    if(!this.settings.folders[id]) {
+                        this.settings.folders[id] = {
+                            name: folder.folderName ? folder.folderName : "Unnamed",
+                            editMode: false,
+                            color: "#2c2c2c"
+                        }
+                    }
+                    Modals.showModal(`${this.settings.folders[id].name} Folder Settings`, ReactTools.createWrappedElement(this.getFolderSettingsPanel(id)), { cancelText: "", confirmText: "Save", size: Modals.ModalSizes.MEDIUM })
+                }
+
+                saveAndUpdateFolderSettings(id) {
+                    PluginUtilities.saveSettings(this.getName(), this.settings)
+                    if(document.querySelector(`ul[id="folder-items-${id}"]`)) document.querySelector(`ul[id="folder-items-${id}"]`).setAttribute("data-editMode", this.settings.folders[id].editMode)
                 }
 
                 saveAndUpdate() {
                     PluginUtilities.saveSettings(this.getName(), this.settings)
                     PluginUtilities.removeStyle(`${this.getName()}-root`)
-                    PluginUtilities.addStyle(`${this.getName()}-root`, rootCss(this.settings.backgroundColor));
+                    PluginUtilities.addStyle(`${this.getName()}-root`, rootCss(this.settings.backgroundColor, this.settings.pingBackgroundColor));
                 }
 
                 setUp() {
                     PluginUtilities.addStyle(`${this.getName()}-css`, this.css);
-                    PluginUtilities.addStyle(`${this.getName()}-root`, rootCss(this.settings.backgroundColor));
+                    PluginUtilities.addStyle(`${this.getName()}-root`, rootCss(this.settings.backgroundColor, this.settings.pingBackgroundColor));
                     addElements(".notDevTools-1zkgfK > .layerContainer-2v_Sit", `<div id="folderOverlay"></div>`)
 
-                    updateFolders()
-                    DiscordModules.SortedGuildStore.addChangeListener(updateFolders)
+                    this.updateFolders(this)
+                    DiscordModules.SortedGuildStore.addChangeListener(this.updateFolderListener)
+                    WebpackModules.getByProps("getMentionCount").addChangeListener(this.updateFolderListener)
+
+                    this.updater = setInterval(() => {
+                        PluginUpdater.checkForUpdate(config.info.name, config.info.version, config.info.github_raw)
+                    }, 1000 * 60 * 60)
+
                 }
 
                 onStart() {
                     this.setUp()
+                    PluginUpdater.checkForUpdate(config.info.name, config.info.version, config.info.github_raw)
                 }
 
                 onStop() {
+                    DiscordModules.SortedGuildStore.removeChangeListener(this.updateFolderListener)
+                    WebpackModules.getByProps("getMentionCount").removeChangeListener(this.updateFolderListener)
                     document.querySelector(".guilds-2JjMmN .tree-3agP2X .scroller-3X7KbA").removeEventListener("scroll");
                     removeElements()
                     removeCustomFolderElements()
-                    DiscordModules.SortedGuildStore.removeChangeListener(updateFolders)
                     PluginUtilities.removeStyle(`${this.getName()}-css`);
                     PluginUtilities.removeStyle(`${this.getName()}-root`);
+                    clearInterval(this.updater)
                     Patcher.unpatchAll();
                 }
             };
