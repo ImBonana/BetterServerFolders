@@ -2,7 +2,7 @@
  * @name BetterServerFolders
  * @author Im_Banana#6112
  * @description Make The Server Folders Better!
- * @version 1.0.2
+ * @version 1.0.3
  * @authorId 635250116688871425
  * @website https://github.com/pronoob742/BetterServerFolders
  * @source https://github.com/pronoob742/BetterServerFolders
@@ -11,7 +11,6 @@
 
 /*@cc_on
 @if (@_jscript)
-	
 	// Offer to self-install for clueless users that try to run this directly.
 	var shell = WScript.CreateObject("WScript.Shell");
 	var fs = new ActiveXObject("Scripting.FileSystemObject");
@@ -40,7 +39,7 @@ module.exports = (() => {
                 "discord_id": "635250116688871425",
                 "github_username": "pronoob742"
             }],
-            "version": "1.0.2",
+            "version": "1.0.3",
             "description": "Make The Server Folders Better!",
             "github": "https://github.com/pronoob742/BetterServerFolders",
             "github_raw": "https://raw.githubusercontent.com/pronoob742/BetterServerFolders/main/BetterServerFolders.plugin.js"
@@ -49,17 +48,17 @@ module.exports = (() => {
             {
                 "title": "New Stuff",
                 "items": [
-                    "Added Folder Settings."
+                    "Added folder color for each folder."
                 ]
-            },
-            {
-                "title": "Bugs Fixes",
-                "type": "fixed",
-                "items": [
-                    "Fixed the pings not showing in the folder.",
-                    "Fixed when you open the setting the folders not close automatically."
-                ]
-            },
+            }
+            // {
+            //     "title": "Bugs Fixes",
+            //     "type": "fixed",
+            //     "items": [
+            //         "Fixed the pings not showing in the folder.",
+            //         "Fixed when you open the setting the folders not close automatically."
+            //     ]
+            // },
             // {
             //     "title": "Improvements",
             //     "type": "improved",
@@ -67,13 +66,13 @@ module.exports = (() => {
             //         ""
             //     ]
             // },
-            {
-                "title": "On-going",
-                "type": "progress",
-                "items": [
-                    "More Setting coming soon... 👀"
-                ]
-            }
+            // {
+            //     "title": "On-going",
+            //     "type": "progress",
+            //     "items": [
+            //         "More Setting coming soon... 👀"
+            //     ]
+            // }
         ],
         "main": "BetterServerFolders.plugin.js"
     };
@@ -132,6 +131,8 @@ module.exports = (() => {
 
             let intervals = []
 
+            let styles = []
+
             /**
              * @param {string} query 
              * @param {string} element
@@ -171,6 +172,12 @@ module.exports = (() => {
                 })
 
                 intervals = []
+
+                styles.forEach(item => {
+                    PluginUtilities.removeStyle(item)
+                })
+
+                styles = []
             }
 
             function rootCss(backgroundColor, pingBackgroundColor) {
@@ -184,6 +191,21 @@ module.exports = (() => {
                 `
 
                 return rootCss;
+            }
+
+            function settingsCss(element, backgroundColor) {
+                PluginUtilities.removeStyle(`${config.info.name}-${element.id}`)
+
+                let rootCss = `
+                    #${element.id},
+                    #${element.id}::before,
+                    #${element.id}::after {
+                        --${config.info.name}-folder-background-color: ${backgroundColor} !important;
+                    }
+                `
+
+                PluginUtilities.addStyle(`${config.info.name}-${element.id}`, rootCss)
+                styles.push(`${config.info.name}-${element.id}`)
             }
 
             function measureWidth(text, font) {
@@ -386,6 +408,7 @@ module.exports = (() => {
                         
                         let folderElement = addElements("#folderOverlay", `<div data-show="${folderData.ariaExpanded}" class="${config.info.name}-folder ${options.animation ? "" : config.info.name + "-no-anim"}" id="folderId-${folder.folderId}"></div>`, { position: "beforeend", removeOnStop: false })
                         addElements(`#${folderElement.id}`, `<div id="folderId-${folder.folderId}-guilds" class="${config.info.name}-folder-guilds" style="background-color: ;"></div>`, { position: "beforeend", removeOnStop: false })
+                        settingsCss(folderElement, this.settings.folders[folder.folderId] ? this.settings.folders[folder.folderId].color : this.settings.backgroundColor)
                         folder.guildIds.forEach(guildId => {
                             let guild = BdApi.Webpack.getModule(BdApi.Webpack.Filters.byProps("getGuild", "getGuilds")).getGuild(guildId)
                             
@@ -423,7 +446,7 @@ module.exports = (() => {
                                 folderElement.dataset.show = `${normalFolder.ariaExpanded}`
                                 if(normalFolder.ariaExpanded == 'true' && oldValue != folderElement.dataset.show) folderElement.classList.remove(`${config.info.name}-no-anim`)
                                 isOpen = normalFolder.ariaExpanded
-                                if(isOpen && document.querySelector(`ul[id="folder-items-${folder.folderId}"]`)) document.querySelector(`ul[id="folder-items-${folder.folderId}"]`).setAttribute("data-editMode", this.settings.folders[folder.folderId] ? this.settings.folders[folder.folderId].editMode : folder)
+                                if(isOpen && document.querySelector(`ul[id="folder-items-${folder.folderId}"]`)) document.querySelector(`ul[id="folder-items-${folder.folderId}"]`).setAttribute("data-editMode", this.settings.folders[folder.folderId] ? this.settings.folders[folder.folderId].editMode : false)
                             }
                         })
                         mutationObserver.observe(normalFolder, {attributes: true})
@@ -465,9 +488,8 @@ module.exports = (() => {
                 getFolderSettingsPanel(id) {
                     return Settings.SettingPanel.build(_ => this.saveAndUpdateFolderSettings(id), ...[
                         new Settings.Textbox("Name", "Set the folder name.", this.settings.folders[id].name, (value) => { if(value.trim() != "") this.settings.folders[id].name = value; }, { placeholder: "Folder Name" }),
-                        new Settings.Switch("Edit Mode", "Set the folder to edit mode to edit the folder guilds and more.", this.settings.folders[id].editMode, (value) => this.settings.folders[id].editMode = value)
-                        // ,
-                        // new Settings.ColorPicker("Folder Color", "Folder background color", this.settings.folders[id].color, (value) => this.settings.folders[id].editMode = value)
+                        new Settings.Switch("Edit Mode", "Set the folder to edit mode to edit the folder guilds and more.", this.settings.folders[id].editMode, (value) => this.settings.folders[id].editMode = value),
+                        new Settings.ColorPicker("Folder Color", "Folder background color", this.settings.folders[id].color, (value) => this.settings.folders[id].color = value)
                     ])
                 }
 
@@ -487,6 +509,9 @@ module.exports = (() => {
                 saveAndUpdateFolderSettings(id) {
                     PluginUtilities.saveSettings(this.getName(), this.settings)
                     if(document.querySelector(`ul[id="folder-items-${id}"]`)) document.querySelector(`ul[id="folder-items-${id}"]`).setAttribute("data-editMode", this.settings.folders[id].editMode)
+                    if(document.querySelector(`#folderId-${id}-settings`)) document.querySelector(`#folderId-${id}-settings`).setAttribute("data-color", this.settings.folders[id].color)
+                    let cFolder = customFolders.find(folder => folder.folderId)
+                    if(cFolder) settingsCss(cFolder.element, this.settings.folders[id] ? this.settings.folders[id].color : this.settings.backgroundColor)
                 }
 
                 saveAndUpdate() {
