@@ -2,7 +2,7 @@
  * @name BetterServerFolders
  * @author Im_Banana#6112
  * @description Make The Server Folders Better!
- * @version 1.1.
+ * @version 1.1.3
  * @authorId 635250116688871425
  * @website https://github.com/pronoob742/BetterServerFolders
  * @source https://github.com/pronoob742/BetterServerFolders
