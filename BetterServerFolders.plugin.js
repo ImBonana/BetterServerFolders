@@ -2,7 +2,7 @@
  * @name BetterServerFolders
  * @author Im_Banana#6112
  * @description Make The Server Folders Better!
- * @version 1.0.3
+ * @version 1.1.
  * @authorId 635250116688871425
  * @website https://github.com/pronoob742/BetterServerFolders
  * @source https://github.com/pronoob742/BetterServerFolders
@@ -39,26 +39,25 @@ module.exports = (() => {
                 "discord_id": "635250116688871425",
                 "github_username": "pronoob742"
             }],
-            "version": "1.0.3",
+            "version": "1.1.3",
             "description": "Make The Server Folders Better!",
             "github": "https://github.com/pronoob742/BetterServerFolders",
             "github_raw": "https://raw.githubusercontent.com/pronoob742/BetterServerFolders/main/BetterServerFolders.plugin.js"
         },
         "changelog": [
+            // {
+            //     "title": "New Stuff",
+            //     "items": [
+            //         "Added folder color for each folder."
+            //     ]
+            // }
             {
-                "title": "New Stuff",
+                "title": "Bugs Fixes",
+                "type": "fixed",
                 "items": [
-                    "Added folder color for each folder."
+                    "Fixed the folder color not updating correctly."
                 ]
             }
-            // {
-            //     "title": "Bugs Fixes",
-            //     "type": "fixed",
-            //     "items": [
-            //         "Fixed the pings not showing in the folder.",
-            //         "Fixed when you open the setting the folders not close automatically."
-            //     ]
-            // },
             // {
             //     "title": "Improvements",
             //     "type": "improved",
@@ -494,7 +493,7 @@ module.exports = (() => {
                 }
 
                 showFolderSettingsPanel(id) {
-                    let folder = DiscordModules.SortedGuildStore.guildFolders.filter(item => item.folderId == id)[0]
+                    let folder = DiscordModules.SortedGuildStore.guildFolders.find(item => item.folderId == id)
                     if(!folder) return Toasts.error("Cant find the folder!");
                     if(!this.settings.folders[id]) {
                         this.settings.folders[id] = {
@@ -510,7 +509,7 @@ module.exports = (() => {
                     PluginUtilities.saveSettings(this.getName(), this.settings)
                     if(document.querySelector(`ul[id="folder-items-${id}"]`)) document.querySelector(`ul[id="folder-items-${id}"]`).setAttribute("data-editMode", this.settings.folders[id].editMode)
                     if(document.querySelector(`#folderId-${id}-settings`)) document.querySelector(`#folderId-${id}-settings`).setAttribute("data-color", this.settings.folders[id].color)
-                    let cFolder = customFolders.find(folder => folder.folderId)
+                    let cFolder = customFolders.find(folder => folder.folderId == id)
                     if(cFolder) settingsCss(cFolder.element, this.settings.folders[id] ? this.settings.folders[id].color : this.settings.backgroundColor)
                 }
 
