@@ -2,7 +2,7 @@
  * @name BetterServerFolders
  * @author Im_Banana#6112
  * @description Make The Server Folders Better!
- * @version 1.1.3
+ * @version 1.1.4
  * @authorId 635250116688871425
  * @website https://github.com/pronoob742/BetterServerFolders
  * @source https://github.com/pronoob742/BetterServerFolders
@@ -39,7 +39,7 @@ module.exports = (() => {
                 "discord_id": "635250116688871425",
                 "github_username": "pronoob742"
             }],
-            "version": "1.1.3",
+            "version": "1.1.4",
             "description": "Make The Server Folders Better!",
             "github": "https://github.com/pronoob742/BetterServerFolders",
             "github_raw": "https://raw.githubusercontent.com/pronoob742/BetterServerFolders/main/BetterServerFolders.plugin.js"
@@ -55,7 +55,7 @@ module.exports = (() => {
                 "title": "Bugs Fixes",
                 "type": "fixed",
                 "items": [
-                    "Fixed the folder color not updating correctly."
+                    "Fixed the ping icon in folders."
                 ]
             }
             // {
@@ -379,13 +379,13 @@ module.exports = (() => {
                         position: absolute;
                         background: var(--${config.info.name}-folder-ping-background-color) !important;
                         border-radius: 20px !important;
-                        width: 20px !important;
+                        width: calc(var(--text-length) + 10px) !important;
                         height: 20px !important;
                         border-style: solid;
                         border-color: var(--${config.info.name}-folder-background-color);
                         border-width: 5px;
                         top: 30px;
-                        left: 30px;
+                        left: calc(40px - var(--text-length));
                         transform-origin: 0px 0px;
                     }
 
@@ -414,7 +414,7 @@ module.exports = (() => {
                             let icon = guild.icon ? `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64"/>` : `<div id="folderId-${folder.folderId}-${guildId}-icon">${guild.acronym}</div>`
                             let guildElement = addElements(`#folderId-${folder.folderId}-guilds`, `<div id="folderId-${folder.folderId}-${guildId}" class="${config.info.name}-folder-guild">${icon}</div>`, { position: "beforeend", removeOnStop: false })
                             let mentions = mentionModule.getMentionCount(guild.id)
-                            addElements(`#folderId-${folder.folderId}-${guildId}`, `<div id="folderId-${folder.folderId}-${guildId}-ping" class="${config.info.name}-folder-guild-ping" data-count="${mentions}"><span>${mentions}</span></div>`, { position: "beforeend", removeOnStop: false })
+                            addElements(`#folderId-${folder.folderId}-${guildId}`, `<div id="folderId-${folder.folderId}-${guildId}-ping" class="${config.info.name}-folder-guild-ping" data-count="${mentions}" style="--text-length: ${("" + mentions).length * 10}px;"><span>${mentions}</span></div>`, { position: "beforeend", removeOnStop: false })
                             setFontScale(`folderId-${folder.folderId}-${guildId}-icon`)
                             guildElement.addEventListener("click", () => {
                                 DiscordModules.GuildActions.transitionToGuildSync(guild.id)
