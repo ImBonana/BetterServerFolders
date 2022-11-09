@@ -2,7 +2,7 @@
  * @name BetterServerFolders
  * @author Im_Banana#6112
  * @description Make The Server Folders Better!
- * @version 1.1.4
+ * @version 1.2.0
  * @authorId 635250116688871425
  * @website https://github.com/pronoob742/BetterServerFolders
  * @source https://github.com/pronoob742/BetterServerFolders
@@ -39,32 +39,33 @@ module.exports = (() => {
                 "discord_id": "635250116688871425",
                 "github_username": "pronoob742"
             }],
-            "version": "1.1.4",
+            "version": "1.2.0",
             "description": "Make The Server Folders Better!",
             "github": "https://github.com/pronoob742/BetterServerFolders",
             "github_raw": "https://raw.githubusercontent.com/pronoob742/BetterServerFolders/main/BetterServerFolders.plugin.js"
         },
         "changelog": [
-            // {
-            //     "title": "New Stuff",
-            //     "items": [
-            //         "Added folder color for each folder."
-            //     ]
-            // }
+            {
+                "title": "New Stuff",
+                "items": [
+                    "Added fix button."
+                ]
+            },
             {
                 "title": "Bugs Fixes",
                 "type": "fixed",
                 "items": [
-                    "Fixed the ping icon in folders."
+                    "Fixed the folder updates.",
+                    "Fixed the folder servers icons."
                 ]
-            }
-            // {
-            //     "title": "Improvements",
-            //     "type": "improved",
-            //     "items": [
-            //         ""
-            //     ]
-            // },
+            },
+            {
+                "title": "Improvements",
+                "type": "improved",
+                "items": [
+                    "Improved the folder update code"
+                ]
+            },
             // {
             //     "title": "On-going",
             //     "type": "progress",
@@ -142,6 +143,21 @@ module.exports = (() => {
                 if(parentElement) {
                     const node = parentElement.insertAdjacentElement(option.position, new DOMParser().parseFromString(element, "text/html").body.firstChild)
                     if(option.removeOnStop) elementsToRemove.push(node)
+                    return node;
+                }
+            }
+
+            /**
+             * 
+             * @param {string} query 
+             * @param {string} element 
+             * @param {Number} pos
+             */
+            function addElementsBefore(query, element, pos) {
+                const parentElement = document.querySelector(query)
+                if(parentElement) {
+                    const node =  parentElement.insertBefore(new DOMParser().parseFromString(element, "text/html").body.firstChild, parentElement.children[pos])
+                    elementsToRemove.push(node)
                     return node;
                 }
             }
@@ -236,6 +252,7 @@ module.exports = (() => {
                 const scale = text.clientWidth / parseFloat(measured);
                 const scaleFontSize = Math.floor(scale * fontSize);
                 text.style.fontSize = `${Math.min(20, scaleFontSize)}px`;
+                return Math.min(20, scaleFontSize)
             }
 
             return class BetterServerFolders extends Plugin {
@@ -394,7 +411,30 @@ module.exports = (() => {
                         top: -14px;
                         left: 5px;
                     }
+
+                    .${config.info.name}-folder-fix-button button {
+                        background-color: var(--background-primary);
+                        transition: background-color .15s ease-out,color .15s ease-out;
+                        cursor: pointer;
+                        display: block;
+                        margin-left: auto;
+                        margin-right: auto;
+                        padding: 3px 5px;
+                        color: var(--text-normal);
+                        border-radius: 3px;
+                        max-width: 70%;
+                    }
+
+                    .${config.info.name}-folder-fix-button button:hover {
+                        background-color: rgb(88 101 242 / 100%);
+                    }
+
+                    .${config.info.name}-folder-fix-button button:active {
+                        transform: translateY(1.5px);
+                    }
                 `
+
+                guildIconCache = {}
 
                 updateFolders(plugin, options = { animation: false }) {
                     removeCustomFolderElements()
@@ -410,12 +450,15 @@ module.exports = (() => {
                         settingsCss(folderElement, this.settings.folders[folder.folderId] ? this.settings.folders[folder.folderId].color : this.settings.backgroundColor)
                         folder.guildIds.forEach(guildId => {
                             let guild = BdApi.Webpack.getModule(BdApi.Webpack.Filters.byProps("getGuild", "getGuilds")).getGuild(guildId)
-                            
-                            let icon = guild.icon ? `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64"/>` : `<div id="folderId-${folder.folderId}-${guildId}-icon">${guild.acronym}</div>`
+                 
+                            let icon = guild.icon ? `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64"/>` : `<div id="folderId-${folder.folderId}-${guildId}-icon" style="font-size: ${this.guildIconCache[guild.id] ? this.guildIconCache[guild.id].size : 0}px;">${guild.acronym}</div>`
                             let guildElement = addElements(`#folderId-${folder.folderId}-guilds`, `<div id="folderId-${folder.folderId}-${guildId}" class="${config.info.name}-folder-guild">${icon}</div>`, { position: "beforeend", removeOnStop: false })
                             let mentions = mentionModule.getMentionCount(guild.id)
                             addElements(`#folderId-${folder.folderId}-${guildId}`, `<div id="folderId-${folder.folderId}-${guildId}-ping" class="${config.info.name}-folder-guild-ping" data-count="${mentions}" style="--text-length: ${("" + mentions).length * 10}px;"><span>${mentions}</span></div>`, { position: "beforeend", removeOnStop: false })
-                            setFontScale(`folderId-${folder.folderId}-${guildId}-icon`)
+                            if(!this.guildIconCache[guild.id] || (this.guildIconCache[guild.id].text != guild.acronym)) this.guildIconCache[guild.id] = {
+                                size: setFontScale(`folderId-${folder.folderId}-${guildId}-icon`),
+                                text: guild.acronym
+                            }
                             guildElement.addEventListener("click", () => {
                                 DiscordModules.GuildActions.transitionToGuildSync(guild.id)
                             })
@@ -468,9 +511,9 @@ module.exports = (() => {
     
                         overlayMutationObserver.observe(document.querySelector(".layer-86YKbF.baseLayer-W6S8cY"), { attributes: true })
                         observers.push(overlayMutationObserver)
-                        
                         document.querySelector(".guilds-2JjMmN .tree-3agP2X .scroller-3X7KbA").addEventListener("scroll", () => {
-                            folderElement.setAttribute("style", `top: ${document.querySelector(`.folder-241Joy[aria-owns="folder-items-${folder.folderId}"]`).getClientRects()[0].y - 10}px;`)
+                            if(!`${(document.querySelector('.folder-241Joy[aria-owns="folder-items-' + folder.folderId + '"]').getClientRects()[0].y - 10).toFixed(2)}`.startsWith(parseFloat(window.getComputedStyle(folderElement).top).toFixed(2)))
+                                folderElement.setAttribute("style", `top: ${document.querySelector('.folder-241Joy[aria-owns="folder-items-' + folder.folderId + '"]').getClientRects()[0].y - 10}px;`);
                         })
                     })                
                 }
@@ -522,7 +565,15 @@ module.exports = (() => {
                 setUp() {
                     PluginUtilities.addStyle(`${this.getName()}-css`, this.css);
                     PluginUtilities.addStyle(`${this.getName()}-root`, rootCss(this.settings.backgroundColor, this.settings.pingBackgroundColor));
+                    window._global_BetterServerFolders = {
+                        updateFolders: () => {this.updateFolderListener()}
+                    }
                     addElements(".notDevTools-1zkgfK > .layerContainer-2v_Sit", `<div id="folderOverlay"></div>`)
+                    addElementsBefore(".unreadMentionsIndicatorTop-2bTgUU + div", `<div id="${config.info.name}-folder-fix-button" class="${config.info.name}-folder-fix-button"><button onclick="window._global_BetterServerFolders.updateFolders()">Fix Folders</button></div>`, 1)
+                    this.buttonChecker = setInterval(() => {
+                        if(!document.getElementById(`${config.info.name}-folder-fix-button`)) 
+                            addElementsBefore(".unreadMentionsIndicatorTop-2bTgUU + div", `<div id="${config.info.name}-folder-fix-button" class="${config.info.name}-folder-fix-button"><button onclick="window._global_BetterServerFolders.updateFolders()">Fix Folders</button></div>`, 1)
+                    }, 5000)
 
                     this.updateFolders(this)
                     DiscordModules.SortedGuildStore.addChangeListener(this.updateFolderListener)
@@ -540,6 +591,7 @@ module.exports = (() => {
                 }
 
                 onStop() {
+                    window._global_BetterServerFolders = null
                     DiscordModules.SortedGuildStore.removeChangeListener(this.updateFolderListener)
                     WebpackModules.getByProps("getMentionCount").removeChangeListener(this.updateFolderListener)
                     document.querySelector(".guilds-2JjMmN .tree-3agP2X .scroller-3X7KbA").removeEventListener("scroll");
@@ -548,6 +600,7 @@ module.exports = (() => {
                     PluginUtilities.removeStyle(`${this.getName()}-css`);
                     PluginUtilities.removeStyle(`${this.getName()}-root`);
                     clearInterval(this.updater)
+                    clearInterval(this.buttonChecker)
                     Patcher.unpatchAll();
                 }
             };
